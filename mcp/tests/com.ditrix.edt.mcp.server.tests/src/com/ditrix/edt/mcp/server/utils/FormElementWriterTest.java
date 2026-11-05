@@ -1322,6 +1322,41 @@ public class FormElementWriterTest
     }
 
     @Test
+    public void testNewUsualGroupExtInfoCarriesDesignerDefaults()
+    {
+        // Issue BusinessAutomationFramework/EDT-MCP#1: a freshly created UsualGroupExtInfo must carry the
+        // designer's defaults EXPLICITLY (eIsSet), or EMF serializes an empty <extInfo/> and a platform
+        // 8.3.15 client rejects the form with "Different property and XDTO data item: currentRowUse".
+        EObject group = newObject(MODEL.formGroup);
+        setLiteral(group, "type", "UsualGroup"); //$NON-NLS-1$ //$NON-NLS-2$
+        EObject extInfo = FormElementWriter.ensureExtInfo(newForm(), group);
+        assertEquals("HorizontalIfPossible", literalOf(extInfo, "group")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("WeakSeparation", literalOf(extInfo, "representation")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("Auto", literalOf(extInfo, "throughAlign")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("Auto", literalOf(extInfo, "currentRowUse")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(Boolean.TRUE, extInfo.eGet(feature(extInfo, "united"))); //$NON-NLS-1$
+        assertEquals(Boolean.TRUE, extInfo.eGet(feature(extInfo, "showLeftMargin"))); //$NON-NLS-1$
+        // currentRowUse is the one that matters for 8.3.15: Auto differs from the EMF default (Use), so it
+        // is set and serialized. A value equal to its feature default (e.g. throughAlign=Auto) is
+        // legitimately reported as not set by EMF, so only currentRowUse is asserted here.
+        assertTrue("currentRowUse must be explicitly set so it is serialized", //$NON-NLS-1$
+            extInfo.eIsSet(feature(extInfo, "currentRowUse"))); //$NON-NLS-1$
+    }
+
+    @Test
+    public void testNewPagesGroupExtInfoUsesAutoCurrentRow()
+    {
+        // Issue #1: CurrentRowUse's EMF default is Use (literal 0); a Pages group must get Auto like
+        // the designer writes, or it claims an associated table it does not have.
+        EObject group = newObject(MODEL.formGroup);
+        setLiteral(group, "type", "Pages"); //$NON-NLS-1$ //$NON-NLS-2$
+        EObject extInfo = FormElementWriter.ensureExtInfo(newForm(), group);
+        assertEquals("PagesGroupExtInfo", extInfo.eClass().getName()); //$NON-NLS-1$
+        assertEquals("Auto", literalOf(extInfo, "currentRowUse")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertTrue(extInfo.eIsSet(feature(extInfo, "currentRowUse"))); //$NON-NLS-1$
+    }
+
+    @Test
     public void testEnsureExtInfoIsIdempotentAndKeepsSetProperties()
     {
         // A 2nd ensureExtInfo returns the SAME instance and does NOT reset properties set on it.
@@ -5065,6 +5100,8 @@ public class FormElementWriterTest
             EClass popupGroupExtInfo = subExtInfo(f, extInfoBase, "PopupGroupExtInfo"); //$NON-NLS-1$
             EClass pageGroupExtInfo = subExtInfo(f, extInfoBase, "PageGroupExtInfo"); //$NON-NLS-1$
             EClass pagesGroupExtInfo = subExtInfo(f, extInfoBase, "PagesGroupExtInfo"); //$NON-NLS-1$
+            // Like the real metamodel, a Pages group also carries currentRowUse (issue #1).
+            addEnum(f, pagesGroupExtInfo, "currentRowUse", currentRowUse); //$NON-NLS-1$
             EClass columnGroupExtInfo = subExtInfo(f, extInfoBase, "ColumnGroupExtInfo"); //$NON-NLS-1$
             EClass commandBarExtInfo = subExtInfo(f, extInfoBase, "CommandBarExtInfo"); //$NON-NLS-1$
             EClass buttonGroupExtInfo = subExtInfo(f, extInfoBase, "ButtonGroupExtInfo"); //$NON-NLS-1$
