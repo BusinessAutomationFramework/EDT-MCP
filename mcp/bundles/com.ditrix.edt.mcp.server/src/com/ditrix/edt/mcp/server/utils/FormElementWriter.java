@@ -281,6 +281,8 @@ public final class FormElementWriter
     private static final String KEY_FORMS = "forms"; //$NON-NLS-1$
     /** The horizontal-alignment feature name on a command bar / label-decoration ext info. */
     private static final String KEY_HORIZONTAL_ALIGN = "horizontalAlign"; //$NON-NLS-1$
+    /** The current-row-use enum feature on a usual / pages group ext info and on a form command. */
+    private static final String KEY_CURRENT_ROW_USE = "currentRowUse"; //$NON-NLS-1$
     /** The event-handlers collection feature name on a form element. */
     private static final String KEY_HANDLERS = "handlers"; //$NON-NLS-1$
     /** The auto-max-width boolean feature name on a visual item / ext info. */
@@ -6178,10 +6180,10 @@ public final class FormElementWriter
         }
         EObject created = extInfoClass.getEPackage().getEFactoryInstance().create(extInfoClass);
         element.eSet(feature, created); // fills an empty slot or replaces a stale (type-mismatched) holder
-        if (ECLASS_USUAL_GROUP_EXT_INFO.equals(extInfoClass.getName()))
+        if (isOrInherits(element.eClass(), ECLASS_FORM_GROUP))
         {
-            // A group re-typed to UsualGroup gets the same designer defaults as a new one (issue #1).
-            applyUsualGroupExtInfoDefaults(created);
+            // A group re-typed to UsualGroup / Pages gets the same defaults as a new one (issue #1).
+            applyGroupExtInfoDefaults(created);
         }
         return created;
     }
@@ -7279,9 +7281,38 @@ public final class FormElementWriter
                 setEnumFeature(extInfo, KEY_HORIZONTAL_ALIGN, "Left"); //$NON-NLS-1$
             }
         }
-        else if (ECLASS_USUAL_GROUP_EXT_INFO.equals(extInfoClassifier))
+        else
         {
-            applyUsualGroupExtInfoDefaults(singleReference(item, FEATURE_EXT_INFO));
+            applyGroupExtInfoDefaults(singleReference(item, FEATURE_EXT_INFO));
+        }
+    }
+
+    /**
+     * Writes the defaults a freshly created group ext-info needs (issue
+     * BusinessAutomationFramework/EDT-MCP#1).
+     * <p>
+     * {@code currentRowUse} is the dangerous one. Its enum ({@code CurrentRowUse}: {@code Use=0,
+     * DontUse=1, Auto=2}) has {@code Use} as the EMF default, so an ext-info that never set it means
+     * "use the current row of an associated table". The designer writes {@code Auto}. With {@code Use}
+     * and no associated table a platform 8.3.15 client rejects the form with "Different property and
+     * XDTO data item: currentRowUse". {@code UsualGroupExtInfo} and {@code PagesGroupExtInfo} both carry
+     * the feature, so it is set on any group ext-info that has it and has not set it yet.
+     */
+    private static void applyGroupExtInfoDefaults(EObject extInfo)
+    {
+        if (extInfo == null)
+        {
+            return;
+        }
+        if (ECLASS_USUAL_GROUP_EXT_INFO.equals(extInfo.eClass().getName()))
+        {
+            applyUsualGroupExtInfoDefaults(extInfo);
+            return;
+        }
+        EStructuralFeature currentRowUse = extInfo.eClass().getEStructuralFeature(KEY_CURRENT_ROW_USE);
+        if (currentRowUse != null && !extInfo.eIsSet(currentRowUse))
+        {
+            setEnumFeature(extInfo, KEY_CURRENT_ROW_USE, "Auto"); //$NON-NLS-1$
         }
     }
 
@@ -7308,7 +7339,7 @@ public final class FormElementWriter
         setBooleanFeature(extInfo, "united", true); //$NON-NLS-1$
         setBooleanFeature(extInfo, "showTitle", true); //$NON-NLS-1$
         setEnumFeature(extInfo, "throughAlign", "Auto"); //$NON-NLS-1$ //$NON-NLS-2$
-        setEnumFeature(extInfo, "currentRowUse", "Auto"); //$NON-NLS-1$ //$NON-NLS-2$
+        setEnumFeature(extInfo, KEY_CURRENT_ROW_USE, "Auto"); //$NON-NLS-1$
     }
 
     /** The platform's default group type literal for a container ({@code getDefaultGroupType}). */
