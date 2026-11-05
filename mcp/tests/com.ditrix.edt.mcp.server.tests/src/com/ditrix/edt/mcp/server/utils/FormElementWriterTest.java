@@ -1322,6 +1322,29 @@ public class FormElementWriterTest
     }
 
     @Test
+    public void testNewUsualGroupExtInfoCarriesDesignerDefaults()
+    {
+        // Issue BusinessAutomationFramework/EDT-MCP#1: a freshly created UsualGroupExtInfo must carry the
+        // designer's defaults EXPLICITLY (eIsSet), or EMF serializes an empty <extInfo/> and a platform
+        // 8.3.15 client rejects the form with "Different property and XDTO data item: currentRowUse".
+        EObject group = newObject(MODEL.formGroup);
+        setLiteral(group, "type", "UsualGroup"); //$NON-NLS-1$ //$NON-NLS-2$
+        EObject extInfo = FormElementWriter.ensureExtInfo(newForm(), group);
+        assertEquals("HorizontalIfPossible", literalOf(extInfo, "group")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("WeakSeparation", literalOf(extInfo, "representation")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("Auto", literalOf(extInfo, "throughAlign")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals("Auto", literalOf(extInfo, "currentRowUse")); //$NON-NLS-1$ //$NON-NLS-2$
+        assertEquals(Boolean.TRUE, extInfo.eGet(feature(extInfo, "united"))); //$NON-NLS-1$
+        assertEquals(Boolean.TRUE, extInfo.eGet(feature(extInfo, "showLeftMargin"))); //$NON-NLS-1$
+        for (String name : new String[] { "group", "representation", "throughAlign", "currentRowUse", //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
+            "united", "showLeftMargin" }) //$NON-NLS-1$ //$NON-NLS-2$
+        {
+            assertTrue(name + " must be explicitly set so it is serialized", //$NON-NLS-1$
+                extInfo.eIsSet(feature(extInfo, name)));
+        }
+    }
+
+    @Test
     public void testEnsureExtInfoIsIdempotentAndKeepsSetProperties()
     {
         // A 2nd ensureExtInfo returns the SAME instance and does NOT reset properties set on it.

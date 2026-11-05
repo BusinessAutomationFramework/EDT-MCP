@@ -6178,6 +6178,11 @@ public final class FormElementWriter
         }
         EObject created = extInfoClass.getEPackage().getEFactoryInstance().create(extInfoClass);
         element.eSet(feature, created); // fills an empty slot or replaces a stale (type-mismatched) holder
+        if (ECLASS_USUAL_GROUP_EXT_INFO.equals(extInfoClass.getName()))
+        {
+            // A group re-typed to UsualGroup gets the same designer defaults as a new one (issue #1).
+            applyUsualGroupExtInfoDefaults(created);
+        }
         return created;
     }
 
@@ -7274,6 +7279,36 @@ public final class FormElementWriter
                 setEnumFeature(extInfo, KEY_HORIZONTAL_ALIGN, "Left"); //$NON-NLS-1$
             }
         }
+        else if (ECLASS_USUAL_GROUP_EXT_INFO.equals(extInfoClassifier))
+        {
+            applyUsualGroupExtInfoDefaults(singleReference(item, FEATURE_EXT_INFO));
+        }
+    }
+
+    /**
+     * Writes the designer's {@code newUsualGroupExtInfo} defaults onto a freshly created
+     * {@code UsualGroupExtInfo} (issue BusinessAutomationFramework/EDT-MCP#1).
+     * <p>
+     * EMF omits a default-valued feature that was never set, so a bare ext-info serializes as an
+     * empty {@code <extInfo/>}. The configuration still builds and opens on a current platform, but a
+     * platform 8.3.15 client refuses the form with "Different property and XDTO data item:
+     * currentRowUse". A group created in the EDT designer carries these values explicitly, and that
+     * form opens. Each value is written only when the metamodel has the feature.
+     */
+    private static void applyUsualGroupExtInfoDefaults(EObject extInfo)
+    {
+        if (extInfo == null)
+        {
+            return;
+        }
+        setEnumFeature(extInfo, "group", "HorizontalIfPossible"); //$NON-NLS-1$ //$NON-NLS-2$
+        setEnumFeature(extInfo, "behavior", "Auto"); //$NON-NLS-1$ //$NON-NLS-2$
+        setEnumFeature(extInfo, "representation", "WeakSeparation"); //$NON-NLS-1$ //$NON-NLS-2$
+        setBooleanFeature(extInfo, "showLeftMargin", true); //$NON-NLS-1$
+        setBooleanFeature(extInfo, "united", true); //$NON-NLS-1$
+        setBooleanFeature(extInfo, "showTitle", true); //$NON-NLS-1$
+        setEnumFeature(extInfo, "throughAlign", "Auto"); //$NON-NLS-1$ //$NON-NLS-2$
+        setEnumFeature(extInfo, "currentRowUse", "Auto"); //$NON-NLS-1$ //$NON-NLS-2$
     }
 
     /** The platform's default group type literal for a container ({@code getDefaultGroupType}). */
